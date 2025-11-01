@@ -1,6 +1,6 @@
 {
-  "name": "zenit-loans-vercel-public",
-  "version": "2.1.0",
+  "name": "zenit-loans-vercel-public-fixed",
+  "version": "2.2.0",
   "private": true,
   "type": "module",
   "scripts": {

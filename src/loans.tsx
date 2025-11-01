@@ -6,6 +6,38 @@ export type LoanMethod = 'EFECTIVO'|'TRANSFERENCIA'|'QR'
 export type Payment = { id: string; date: string; type: 'interest'|'capital'|'total'; method: LoanMethod; amount: number }
 export type Loan = { id: string; clientName: string; phone?: string; address?: string; loanMethod: LoanMethod; monthlyRate: number; originalAmount: number; remainingCapital: number; total: number; loanDate: string; dueDate: string; status: 'active'|'paid'; payments: Payment[] }
 
+// --- Utilidades de fecha robustas ---
+function parseDate(input: string): Date {
+  // ISO estándar del <input type="date"> → 'YYYY-MM-DD'
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
+    return new Date(input + 'T00:00:00')
+  }
+  // Escrito manualmente: 'DD/MM/YYYY'
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(input)) {
+    const [dd, mm, yyyy] = input.split('/')
+    return new Date(Number(yyyy), Number(mm) - 1, Number(dd))
+  }
+  // Último recurso (no recomendado, por compatibilidad)
+  return new Date(input)
+}
+function ensureISODateOnly(date: Date): string {
+  if (isNaN(date.getTime())) throw new Error('Fecha inválida')
+  return date.toISOString().split('T')[0]
+}
+function calcDue(d: string): string {
+  const base = parseDate(d)
+  const day = base.getDate()
+  const nm = new Date(base)
+  nm.setMonth(nm.getMonth() + 1)
+  nm.setDate(day)
+  return ensureISODateOnly(nm)
+}
+function formatLocalDate(s: string): string {
+  const d = parseDate(s)
+  if (isNaN(d.getTime())) return s || 'N/A'
+  return d.toLocaleDateString('es-ES')
+}
+
 export default function Loans(){
   const [loans,setLoans] = useState<Loan[]>([])
   const [showAdd,setShowAdd] = useState(false)
@@ -18,14 +50,30 @@ export default function Loans(){
   async function load(){ const r = await fetch('/api/loans'); const j = await r.json(); setLoans(j.loans||[]) }
   useEffect(()=>{ load() },[])
 
-  function statusInfo(l:Loan){ if(l.status==='paid') return {text:'Pagado', color:'bg-green-100 text-green-800', icon:CheckCircle as any}; const today=new Date(); const due=new Date(l.dueDate); if(due<today) return {text:'Vencido', color:'bg-red-100 text-red-800', icon:AlertCircle as any}; return {text:'Activo', color:'bg-blue-100 text-blue-800', icon:Clock as any} }
-  function calcDue(d:string){ const dt=new Date(d); const day=dt.getDate(); const nm=new Date(dt); nm.setMonth(nm.getMonth()+1); nm.setDate(day); return nm.toISOString().split('T')[0] }
+  function statusInfo(l:Loan){ if(l.status==='paid') return {text:'Pagado', color:'bg-green-100 text-green-800', icon:CheckCircle as any}; const today=new Date(); const due=parseDate(l.dueDate); if(due<today) return {text:'Vencido', color:'bg-red-100 text-red-800', icon:AlertCircle as any}; return {text:'Activo', color:'bg-blue-100 text-blue-800', icon:Clock as any} }
 
-  async function addLoan(){ if(!form.clientName||!form.amount) return alert('Completa cliente y monto'); const amount=parseFloat(form.amount); const rate=Math.max(3,Math.min(20,Number(form.rate)||10)); const total = amount + amount*rate/100; const dueDate = calcDue(form.loanDate); const body = { clientName:form.clientName, phone:form.phone, address:form.address, loanMethod:form.loanMethod, monthlyRate:rate, originalAmount:amount, remainingCapital:amount, total, loanDate:form.loanDate, dueDate }; const r = await fetch('/api/loans',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}); if(r.ok){ setShowAdd(false); setForm({ clientName:'', amount:'', rate:'10', loanDate:new Date().toISOString().slice(0,10), phone:'', address:'', loanMethod:'EFECTIVO' }); load(); } else alert('Error al crear préstamo') }
+  async function addLoan(){
+    if(!form.clientName||!form.amount) return alert('Completa cliente y monto')
+    const amount=parseFloat(form.amount)
+    const rate=Math.max(3,Math.min(20,Number(form.rate)||10))
+    const loanDateISO = ensureISODateOnly(parseDate(form.loanDate))
+    const dueDateISO = calcDue(loanDateISO)
+    const total = amount + amount*rate/100
+    const body = { clientName:form.clientName, phone:form.phone, address:form.address, loanMethod:form.loanMethod, monthlyRate:rate, originalAmount:amount, remainingCapital:amount, total, loanDate:loanDateISO, dueDate:dueDateISO }
+    const r = await fetch('/api/loans',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})
+    if(r.ok){ setShowAdd(false); setForm({ clientName:'', amount:'', rate:'10', loanDate:new Date().toISOString().slice(0,10), phone:'', address:'', loanMethod:'EFECTIVO' }); load(); }
+    else alert('Error al crear préstamo')
+  }
 
-  async function addPayment(loanId:string, type:'interest'|'capital'|'total'){ const body:any = { type, date:paymentForm.date, method:paymentForm.method }; if(type==='capital') body.amount = Number(paymentForm.amount); const r = await fetch(`/api/loans/${loanId}/payments`,{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}); if(r.ok){ setShowPayment(null); setPaymentForm({ amount:'', date:new Date().toISOString().slice(0,10), method:'EFECTIVO' }); load(); } else alert('Error al registrar pago') }
+  async function addPayment(loanId:string, type:'interest'|'capital'|'total'){
+    const body:any = { type, date:paymentForm.date, method:paymentForm.method }
+    if(type==='capital') body.amount = Number(paymentForm.amount)
+    const r = await fetch(`/api/loans/${loanId}/payments`,{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})
+    if(r.ok){ setShowPayment(null); setPaymentForm({ amount:'', date:new Date().toISOString().slice(0,10), method:'EFECTIVO' }); load(); }
+    else alert('Error al registrar pago')
+  }
 
-  const filtered = useMemo(()=> loans.filter(l => filter==='all'? true : filter==='active'? l.status==='active' : filter==='paid'? l.status==='paid' : (l.status==='active' && new Date(l.dueDate)<new Date())), [loans,filter])
+  const filtered = useMemo(()=> loans.filter(l => filter==='all'? true : filter==='active'? l.status==='active' : filter==='paid'? l.status==='paid' : (l.status==='active' && parseDate(l.dueDate) < new Date())), [loans,filter])
   const totalLent = loans.reduce((s,l)=> s+(l.originalAmount||0),0)
   const totalPending = loans.filter(l=>l.status==='active').reduce((s,l)=> s+(l.remainingCapital||0),0)
   const totalInterest = loans.reduce((s,l)=> s+((l.payments||[]).filter(p=>p.type!=='capital').reduce((ss,p)=> ss+p.amount,0)),0)
@@ -70,7 +118,7 @@ export default function Loans(){
                   <div><p className='text-gray-600'>Tasa Mensual</p><p className='font-semibold'>{loan.monthlyRate}%</p></div>
                   <div><p className='text-gray-600'>Interés Mensual</p><p className='font-semibold text-blue-600'>${interest.toFixed(2)}</p></div>
                   <div><p className='text-gray-600'>Método</p><p className='font-semibold'>{loan.loanMethod}</p></div>
-                  <div><p className='text-gray-600'>Vencimiento</p><p className='font-semibold'>{new Date(loan.dueDate).toLocaleDateString('es-ES')}</p></div>
+                  <div><p className='text-gray-600'>Vencimiento</p><p className='font-semibold'>{formatLocalDate(loan.dueDate)}</p></div>
                 </div>
                 {loan.status==='active' && (<div className='w-full bg-gray-200 rounded-full h-2'><div className='bg-green-500 h-2 rounded-full' style={{width:`${progress}%`}}/></div>)}
               </div>
@@ -86,6 +134,8 @@ export default function Loans(){
           </div>)
         })}
       </div>
+
+      {/* Modales de creación/pago iguales al ZIP anterior, con fechas normalizadas */}
     </div>
 
     {showAdd && (<div className='fixed inset-0 bg-black/50 grid place-items-center p-4 z-50'><div className='bg-white rounded-lg shadow-xl max-w-md w-full p-6'>
@@ -97,7 +147,7 @@ export default function Loans(){
           <div><label className='block text-sm font-medium mb-1'>Tasa Mensual (3%–20%)</label><input type='number' min={3} max={20} step='0.1' className='w-full px-3 py-2 border rounded-lg' value={form.rate} onChange={e=>setForm({...form, rate:e.target.value})}/>{form.amount && form.rate && (<p className='text-sm text-gray-600 mt-1'>Interés: {(parseFloat(form.amount||'0')*Number(form.rate||'10')/100).toFixed(2)} · Total: {(parseFloat(form.amount||'0')*(1+Number(form.rate||'10')/100)).toFixed(2)}</p>)}</div>
           <div><label className='block text-sm font-medium mb-1'>Método</label><select className='w-full px-3 py-2 border rounded-lg' value={form.loanMethod} onChange={e=>setForm({...form, loanMethod:e.target.value as any})}><option value='EFECTIVO'>Efectivo</option><option value='TRANSFERENCIA'>Transferencia</option><option value='QR'>QR</option></select></div>
         </div>
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-3'><div><label className='block text-sm font-medium mb-1'>Fecha del Préstamo</label><input type='date' className='w-full px-3 py-2 border rounded-lg' value={form.loanDate} onChange={e=>setForm({...form, loanDate:e.target.value})}/><p className='text-sm text-gray-600 mt-1'>Vencimiento: {new Date(new Date(form.loanDate).setMonth(new Date(form.loanDate).getMonth()+1)).toLocaleDateString('es-ES')}</p></div><div><label className='block text-sm font-medium mb-1'>Teléfono</label><input className='w-full px-3 py-2 border rounded-lg' value={form.phone} onChange={e=>setForm({...form, phone:e.target.value})} placeholder='555-1234'/></div></div>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-3'><div><label className='block text-sm font-medium mb-1'>Fecha del Préstamo</label><input type='date' className='w-full px-3 py-2 border rounded-lg' value={form.loanDate} onChange={e=>setForm({...form, loanDate:e.target.value})}/><p className='text-sm text-gray-600 mt-1'>Vencimiento: {formatLocalDate(calcDue(form.loanDate))}</p></div><div><label className='block text-sm font-medium mb-1'>Teléfono</label><input className='w-full px-3 py-2 border rounded-lg' value={form.phone} onChange={e=>setForm({...form, phone:e.target.value})} placeholder='555-1234'/></div></div>
         <div><label className='block text-sm font-medium mb-1'>Dirección</label><input className='w-full px-3 py-2 border rounded-lg' value={form.address} onChange={e=>setForm({...form, address:e.target.value})} placeholder='Calle Principal #123'/></div>
         <button className='w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-semibold' onClick={addLoan}>Registrar Préstamo</button>
       </div></div></div>)}
