@@ -60,6 +60,40 @@ const LoanManagementSystem: React.FC = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  const exportToExcel = () => {
+    const headers = ['Cliente', 'Teléfono', 'Capital Original', 'Capital Pendiente', 'Tasa', 'Interés', 'Total Adeudado', 'Fecha Préstamo', 'Vencimiento', 'Estado'];
+    
+    const rows = loans.map(loan => {
+      const totalOwed = (loan.remainingCapital || 0) + (loan.interest || 0);
+      return [
+        loan.clientName || '',
+        loan.phone || '',
+        (loan.originalAmount || 0).toFixed(2),
+        (loan.remainingCapital || 0).toFixed(2),
+        `${loan.interestRate || 10}%`,
+        (loan.interest || 0).toFixed(2),
+        totalOwed.toFixed(2),
+        loan.loanDate ? new Date(loan.loanDate).toLocaleDateString('es-ES') : '',
+        loan.dueDate ? new Date(loan.dueDate).toLocaleDateString('es-ES') : '',
+        loan.status === 'paid' ? 'Pagado' : 'Activo'
+      ];
+    });
+
+    let csvContent = headers.join(',') + '\n';
+    rows.forEach(row => {
+      csvContent += row.map(cell => `"${cell}"`).join(',') + '\n';
+    });
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `prestamos_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   useEffect(() => {
     if (isAuthenticated) {
       loadLoans();
