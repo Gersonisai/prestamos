@@ -190,11 +190,18 @@ const LoanManagementSystem: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => setShowAddForm(true)}
                 className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 sm:px-6 py-3 rounded-xl hover:shadow-2xl transition-all flex items-center gap-2 font-semibold text-sm sm:text-base"
               >
                 <Plus size={18} className="sm:w-5 sm:h-5" />
-                Actualizar
+                Nuevo Préstamo
+              </button>
+              <button
+                onClick={exportToExcel}
+                className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-2 rounded-lg hover:shadow-lg transition-all flex items-center gap-1.5 text-sm hidden sm:flex"
+              >
+                <Download size={16} />
+                Exportar
               </button>
             </div>
           </div>
