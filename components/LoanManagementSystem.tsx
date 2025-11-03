@@ -2,6 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, TrendingDown, AlertCircle, CheckCircle, Clock, Plus, X, Eye, Download, FileText, Users, PieChart, Bell } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
+// Declare custom window interface
+declare global {
+  interface Window {
+    storage: {
+      get(key: string): Promise<{ value: string } | null>;
+      set(key: string, value: string): Promise<void>;
+      list(prefix: string): Promise<{ keys: string[] }>;
+      remove(key: string): Promise<void>;
+    };
+    html2canvas?: (element: HTMLElement, options?: any) => Promise<HTMLCanvasElement>;
+  }
+}
+
 // Types
 interface Payment {
   date: string;
@@ -599,7 +612,7 @@ const LoanManagementSystem = () => {
 
   const activos = totalRecovered + totalInterest;
   const pasivos = totalPending;
-  const uniqueClients = [...new Set(loans.map(l => l.clientName))].length;
+  const uniqueClients = Array.from(new Set(loans.map(l => l.clientName))).length;
 
   const StatusIcon = selectedLoan ? getStatusInfo(selectedLoan).icon : Clock;
 
@@ -966,7 +979,7 @@ const LoanManagementSystem = () => {
           <div className="bg-white rounded-2xl shadow-xl p-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Lista de Clientes</h2>
             <div className="grid gap-4">
-              {[...new Set(loans.map(l => l.clientName))].map(clientName => {
+              {Array.from(new Set(loans.map(l => l.clientName))).map(clientName => {
                 const clientLoans = loans.filter(l => l.clientName === clientName);
                 const totalBorrowed = clientLoans.reduce((sum, l) => sum + (l.originalAmount || 0), 0);
                 const totalPending = clientLoans.filter(l => l.status === 'active').reduce((sum, l) => sum + (l.remainingCapital || 0), 0);
@@ -1205,7 +1218,7 @@ const LoanManagementSystem = () => {
                   onChange={(e) => setFormData({...formData, notes: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   placeholder="Información adicional..."
-                  rows="2"
+                  rows={2}
                 ></textarea>
               </div>
               
