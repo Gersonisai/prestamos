@@ -33,7 +33,7 @@ interface LoginForm {
   password: string;
 }
 
-const LoanManagementSystem: React.FC = () => {
+const LoanManagementSystem = (): JSX.Element => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loginForm, setLoginForm] = useState<LoginForm>({ username: '', password: '' });
   const [loginError, setLoginError] = useState<string>('');
@@ -57,5 +57,12 @@ const LoanManagementSystem: React.FC = () => {
     notes: '',
     installments: '1'
   });
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+    const [isSaving, setIsSaving] = useState<boolean>(false);
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+    return (
+      <div>
+        {/* Add your component JSX here */}
+      </div>
+    );
+  };
