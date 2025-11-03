@@ -5,10 +5,7 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
-  poweredByHeader: false,
-  env: {
-    NODE_ENV: process.env.NODE_ENV,
-  },
+  poweredByHeader: false
 };
 
 module.exports = nextConfig;
