@@ -47,6 +47,23 @@ interface Loan {
 }
 
 import { Loan, Payment } from '../types/loan';
+import { useState, useEffect } from 'react';
+import { 
+  DollarSign, 
+  X, 
+  Download, 
+  PieChart, 
+  FileText, 
+  Users,
+  TrendingUp,
+  TrendingDown,
+  Bell,
+  Plus,
+  CheckCircle,
+  AlertCircle,
+  Clock
+} from 'lucide-react';
+import { toast, Toaster } from 'react-hot-toast';
 
 interface FormData {
   clientName: string;
@@ -103,13 +120,12 @@ const LoanManagementSystem = () => {
           })
         );
         // Deduplicar por id por si hay entradas repetidas
-        const filtered = loadedLoans.filter(loan => loan !== null) as Loan[];
-        const uniqueById = Object.values(filtered.reduce((acc, loan) => {
-          if (!loan) return acc;
+        const filtered = loadedLoans.filter((loan): loan is Loan => loan !== null);
+        const uniqueById = Object.values(filtered.reduce<Record<string, Loan>>((acc, loan) => {
           acc[loan.id] = loan;
           return acc;
-        }, {} as Record<string, Loan>));
-        setLoans(uniqueById as any);
+        }, {}));
+        setLoans(uniqueById);
       }
     } catch (error) {
       console.log('No hay préstamos guardados aún');
@@ -117,7 +133,7 @@ const LoanManagementSystem = () => {
     }
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setLoginError('');
     
@@ -226,7 +242,7 @@ const LoanManagementSystem = () => {
     return `${yyyy}-${mm}-${dd}`;
   };
 
-  const addLoan = async () => {
+  const addLoan = async (): Promise<void> => {
     if (isSaving) return; // prevenir envíos dobles
 
     // Validaciones
@@ -331,7 +347,7 @@ const LoanManagementSystem = () => {
     }
   };
 
-  const deleteLoan = async (loanId: string) => {
+  const deleteLoan = async (loanId: string): Promise<void> => {
     // Usar toast.promise para confirmación
     const shouldDelete = window.confirm('¿Eliminar este préstamo? Esta acción no se puede deshacer.');
     if (!shouldDelete) return;
