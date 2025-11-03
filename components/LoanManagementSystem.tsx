@@ -46,21 +46,34 @@ interface Loan {
   createdAt: string;
 }
 
+import { Loan, Payment } from '../types/loan';
+
+interface FormData {
+  clientName: string;
+  amount: string;
+  interestRate: string;
+  loanDate: string;
+  phone: string;
+  address: string;
+  notes: string;
+  installments: string;
+}
+
 const LoanManagementSystem = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
-  const [loans, setLoans] = useState([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [selectedLoan, setSelectedLoan] = useState(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(null);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'paid' | 'overdue'>('all');
+  const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
-  const [activeView, setActiveView] = useState('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'loans' | 'clients'>('dashboard');
   const [showReceiptPreview, setShowReceiptPreview] = useState(null);
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     clientName: '',
     amount: '',
     interestRate: '10',
@@ -192,7 +205,7 @@ const LoanManagementSystem = () => {
     );
   }
 
-  const calculateDueDate = (loanDateStr) => {
+  const calculateDueDate = (loanDateStr: string): string => {
     // Parsear la fecha correctamente sin conversión de zona horaria
     const [year, month, day] = loanDateStr.split('-').map(Number);
     const loanDate = new Date(year, month - 1, day);
@@ -334,7 +347,7 @@ const LoanManagementSystem = () => {
     }
   };
 
-  const addPayment = async (loanId, paymentType, amount = null) => {
+  const addPayment = async (loanId: string, paymentType: Payment['type'], amount: number | null = null) => {
     const loan = loans.find(l => l.id === loanId);
     if (!loan) return;
 
